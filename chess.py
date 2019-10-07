@@ -99,6 +99,15 @@ class Board:
             if p.is_king() and p.color == color:
                 return p
 
+    def possible_move_candidates_for_checks(self, color):
+        for piece in self.get_pieces():
+            if piece.color != color:
+                continue
+            if piece.is_king():
+                continue
+            for m in piece.possible_moves():
+                yield(m)
+
     def possible_move_candidates(self, color):
         for piece in self.get_pieces():
             if piece.color != color:
@@ -407,6 +416,7 @@ class King(Piece):
             yield m
 
     def short_castle(self):
+        print(self)
         rook_square = Square.from_coords(7, self.square.y)
         rook = self.board.get_piece(rook_square)
         if not rook:
@@ -422,7 +432,7 @@ class King(Piece):
             if piece is not None:
                 return
 
-        moves = self.board.possible_move_candidates(-self.color)
+        moves = self.board.possible_move_candidates_for_checks(-self.color)
         for x in [5, 6]:
             square = Square.from_coords(x, self.square.y)
             for m in moves:
@@ -447,7 +457,7 @@ class King(Piece):
             if piece is not None:
                 return
 
-        moves = self.board.possible_move_candidates(-self.color)
+        moves = self.board.possible_move_candidates_for_checks(-self.color)
         for x in [2, 3]:
             square = Square.from_coords(x, self.square.y)
             for m in moves:
@@ -463,7 +473,7 @@ class King(Piece):
         return True
 
     def is_in_check(self):
-        moves = self.board.possible_move_candidates(-self.color)
+        moves = self.board.possible_move_candidates_for_checks(-self.color)
         for m in moves:
             if m.captured_piece == self:
                 #print("king in check")
@@ -529,38 +539,27 @@ def test():
     board = Board(size=8, pieces=pieces)
     game = Game(board=board, onturn=white)
 
-    # moves = [
-    #     Move(board.get_piece(Square("e2")), Square("e4")),
-    #     Move(board.get_piece(Square("e7")), Square("e5")),
-    #     Move(board.get_piece(Square("g1")), Square("f3")),
-    #     Move(board.get_piece(Square("b8")), Square("c6")),
-    #     Move(board.get_piece(Square("f1")), Square("c4")),
-    #     Move(board.get_piece(Square("f8")), Square("c5")),
-    # ]
+    moves = [
+        "e2-e4",
+        "e7-e5",
+        "c2-c3",
+        "d7-d5",
+        "g1-e2",
+        "g8-h6",
+        "b1-a3",
+        "g7-g6",
+        "g2-g4",
+        "c7-c6",
+        "a3-b5",
+        "f8-e7",
+    ]
 
-    # for m in moves:
-    #     game.do_move(m)
-    #     board.draw()
-
-    # king_moves = board.get_king(Color.WHITE).possible_moves()
-    # for km in king_moves:
-    #     move = km
-    # game.do_move(move)
-    # board.draw()
-
-    # game.do_move(Move(board.get_piece(Square("g8")), Square("f6")))
-    # board.draw()
-
-    # game.do_move(Move(board.get_piece(Square("c2")), Square("c3")))
-    # king_moves = board.get_king(Color.BLACK).possible_moves()
-    # for km in king_moves:
-    #     print(km)
-    #     move = km
-
-    # game.do_move(move)
-    # board.draw()
-
-
+    for m in moves:
+        start, end = m.split("-")
+        move = Move(board.get_piece(Square(start)), Square(end))
+        game.do_move(move)
+        board.draw()
+        print("-----------------")
 
     move_count = 0
     while True:
