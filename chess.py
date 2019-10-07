@@ -433,7 +433,7 @@ class King(Piece):
                 return
 
         moves = self.board.possible_move_candidates_for_checks(-self.color)
-        for x in [5, 6]:
+        for x in [4, 5, 6]:
             square = Square.from_coords(x, self.square.y)
             for m in moves:
                 if m.end == square:
@@ -451,14 +451,14 @@ class King(Piece):
         if rook.moved > 0:
             return
 
-        for x in [2, 3]:
+        for x in [1, 2, 3]:
             square = Square.from_coords(x, self.square.y)
             piece = self.board.get_piece(square)
             if piece is not None:
                 return
 
         moves = self.board.possible_move_candidates_for_checks(-self.color)
-        for x in [2, 3]:
+        for x in [2, 3, 4]:
             square = Square.from_coords(x, self.square.y)
             for m in moves:
                 if m.end == square:
@@ -555,6 +555,10 @@ def test():
         else:
             print("%d. %s" % ((move_count + 1) / 2, str(move)))
         game.do_move(move)
+        if str(move) == "O-O" or str(move) == "O-O-O":
+            break
+        if move_count == 100:
+            break
 
     board.draw()
 
