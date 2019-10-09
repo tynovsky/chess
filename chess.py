@@ -496,8 +496,7 @@ class Knight(Piece):
     def is_knight(self):
         return True
 
-
-def test():
+def init_game():
     white = Color.WHITE
     black = Color.BLACK
 
@@ -538,29 +537,33 @@ def test():
     ]
     board = Board(size=8, pieces=pieces)
     game = Game(board=board, onturn=white)
+    return game
+
+def pick_move(game, candidates):
+    return random.choice(candidates)
+
+def test():
+    game = init_game()
 
     move_count = 0
     while True:
         move_count += 1
-        possible_moves = list(game.possible_moves())
         if game.is_over():
             # print("Moves: " + str(move_count))
             break
 
-        move = random.choice(possible_moves)
-        board.draw()
+        possible_moves = list(game.possible_moves())
+        move = pick_move(game, possible_moves)
+
+        game.board.draw()
         print("-----------------")
         if move_count % 2 == 0:
             print("%d. ... %s" % (move_count / 2, str(move)))
         else:
             print("%d. %s" % ((move_count + 1) / 2, str(move)))
         game.do_move(move)
-        if str(move) == "O-O" or str(move) == "O-O-O":
-            break
-        if move_count == 100:
-            break
 
-    board.draw()
+    game.board.draw()
 
 if __name__ == "__main__":
     test()
