@@ -18,6 +18,7 @@ class Board:
         for piece in pieces:
             self.grid[piece.square.x][piece.square.y] = piece
             piece.board = self
+        self.cache = {}
 
     def draw(self):
         for j in range(self.size - 1, -1, -1):
@@ -32,6 +33,14 @@ class Board:
                     print(str(piece) + " ", end='')
             print()
         print("  ᵃ ᵇ ᶜ ᵈ ᵉ ᶠ ᵍ ʰ")
+
+    def __str__(self):
+        s = ''
+        for j in range(self.size -1, -1, -1):
+            for i in range(0, self.size):
+                piece = self.grid[i][j]
+                s += str(piece)
+        return s
 
     def valid_square(self, square):
         return square.x >= 0 and square.x < self.size and square.y >= 0 and square.y < self.size
@@ -99,45 +108,69 @@ class Board:
             if p.is_king() and p.color == color:
                 return p
 
-    def possible_move_candidates_for_checks(self, color):
-        for piece in self.get_pieces():
-            if piece.color != color:
-                continue
-            if piece.is_king():
-                continue
-            for m in piece.possible_moves():
-                yield(m)
+    def possible_moves(self, color):
+        key = str(color) + str(self) + str(self.shadow)
+        if key in self.cache:
+            return self.cache[key]
+        moves = []
 
-    def possible_move_candidates(self, color):
         for piece in self.get_pieces():
             if piece.color != color:
                 continue
             for m in piece.possible_moves():
-                yield(m)
-
-    def possible_moves(self, color, candidates):
-        for m in candidates:
-            self.do_move(m)
-            king = self.get_king(color)
-            if not king.is_in_check():
-                yield m
-            self.undo_move(m)
+                self.do_move(m)
+                king = self.get_king(color)
+                if not king.is_in_check():
+                    moves.append(m)
+                self.undo_move(m)
+        self.cache[key] = moves
+        return moves
 
 class Game:
     def __init__(self, board, onturn):
         self.board = board
         self.onturn = onturn
+        self.position_count = {}
 
     def possible_moves(self):
-        candidates = self.board.possible_move_candidates(self.onturn)
-        return self.board.possible_moves(self.onturn, candidates)
+        return self.board.possible_moves(self.onturn)
 
     def do_move(self, move):
         self.board.do_move(move)
         self.onturn = -self.onturn
+        # self.position_count[self.serialize_position()] += 1
+
+    def undo_move(self, move):
+        # self.position_count[self.serialize_position()] -= 1
+        self.board.undo_move(move)
+        self.onturn = -self.onturn
+
+    def is_checkmate(self):
+        king = self.board.get_king(self.onturn)
+        if not king.is_in_check():
+            return False
+        possible_moves = list(self.possible_moves())
+        if len(possible_moves) > 0:
+            return False
+        return True
+
+    def is_stalemate(self):
+        possible_moves = list(self.possible_moves())
+        if len(possible_moves) > 0:
+            return False
+        king = self.board.get_king(self.onturn)
+        if king.is_in_check():
+            return False
+        return True
+
+    # def is_repetition(self):
+    #     if self.position_count[self.serialize_position()] > 3:
+    #         return True
+    #     return False
 
     def is_over(self):
         possible_moves = list(self.possible_moves())
+
         if len(possible_moves) == 0:
             return True
         pieces = self.board.get_pieces()
@@ -176,23 +209,22 @@ class Color(IntEnum):
     BLACK = -1
 
 class Square:
-    def __init__(self, notation):
-        notes = list(notation)
-        self.x = ord(notes[0]) - ord("a")
-        self.y = int(notes[1]) - 1
-
-    @classmethod
-    def from_coords(cls, x, y):
-        self = cls("a1")
+    def __init__(self, x, y):
         self.x = x
         self.y = y
-        return self
+
+    @classmethod
+    def from_notation(cls, notation):
+        notes = list(notation)
+        x = ord(notes[0]) - ord("a")
+        y = int(notes[1]) - 1
+        return cls(x, y)
 
     def __add__(self, t):
-        return Square.from_coords(self.x + t[0], self.y + t[1])
+        return Square(self.x + t[0], self.y + t[1])
 
     def __sub__(self, t):
-        return Square.from_coords(self.x - t[0], self.y - t[1])
+        return Square(self.x - t[0], self.y - t[1])
 
     def __eq__(self, c):
         return self.x == c.x and self.y == c.y
@@ -393,6 +425,10 @@ class Queen(Piece):
 class King(Piece):
     directions = ["up", "down", "left", "right", "up_left", "up_right", "down_left", "down_right"]
 
+    def __init__(self, color, square, board=None):
+        super().__init__(color, square, board)
+        self.mirror_figures = [ kind(self.color, self.square) for kind in [Queen, Rook, Knight, Bishop, Pawn] ]
+
     def candidate_captures(self):
         for d in self.directions:
             c = self.square + self.dir_vectors[d]
@@ -417,7 +453,7 @@ class King(Piece):
 
     def short_castle(self):
         # print(self)
-        rook_square = Square.from_coords(7, self.square.y)
+        rook_square = Square(7, self.square.y)
         rook = self.board.get_piece(rook_square)
         if not rook:
             return
@@ -427,22 +463,19 @@ class King(Piece):
             return
 
         for x in [5, 6]:
-            square = Square.from_coords(x, self.square.y)
+            square = Square(x, self.square.y)
             piece = self.board.get_piece(square)
             if piece is not None:
                 return
 
-        moves = self.board.possible_move_candidates_for_checks(-self.color)
         for x in [4, 5, 6]:
-            square = Square.from_coords(x, self.square.y)
-            for m in moves:
-                if m.end == square:
-                    return
+            if self.is_attacked( Square(x, self.square.y) ):
+                return
 
-        yield Move(piece = self, end = Square.from_coords(6, self.square.y), castle = "short")
+        yield Move(piece = self, end = Square(6, self.square.y), castle = "short")
 
     def long_castle(self):
-        rook_square = Square.from_coords(0, self.square.y)
+        rook_square = Square(0, self.square.y)
         rook = self.board.get_piece(rook_square)
         if not rook:
             return
@@ -452,19 +485,16 @@ class King(Piece):
             return
 
         for x in [1, 2, 3]:
-            square = Square.from_coords(x, self.square.y)
+            square = Square(x, self.square.y)
             piece = self.board.get_piece(square)
             if piece is not None:
                 return
 
-        moves = self.board.possible_move_candidates_for_checks(-self.color)
         for x in [2, 3, 4]:
-            square = Square.from_coords(x, self.square.y)
-            for m in moves:
-                if m.end == square:
-                    return
+            if self.is_attacked( Square(x, self.square.y) ):
+                return
 
-        yield Move(piece = self, end = Square.from_coords(2, self.square.y), castle = "long")
+        yield Move(piece = self, end = Square(2, self.square.y), castle = "long")
 
     def __str__(self):
         return "♚" if self.color == Color.WHITE else "♔"
@@ -473,12 +503,24 @@ class King(Piece):
         return True
 
     def is_in_check(self):
-        moves = self.board.possible_move_candidates(-self.color)
-        for m in moves:
-            if m.captured_piece == self:
-                #print("king in check")
+        if self.is_attacked(self.square):
+            return True
+
+        for c in self.possible_captures():
+            if type(c.captured_piece) is King:
                 return True
+
         return False
+
+    def is_attacked(self, square):
+        for p in self.mirror_figures:
+            p.square = square
+            p.board = self.board
+            captures = p.possible_captures()
+            for c in captures:
+                if type(c.captured_piece) is type(p):
+                    return True
+
 
 class Knight(Piece):
     def candidate_captures(self):
@@ -501,55 +543,61 @@ def init_game():
     black = Color.BLACK
 
     pieces = [
-        Rook(white, Square("a1")),
-        Rook(white, Square("h1")),
-        Knight(white, Square("b1")),
-        Knight(white, Square("g1")),
-        Bishop(white, Square("c1")),
-        Bishop(white, Square("f1")),
-        Queen(white, Square("d1")),
-        King(white, Square("e1")),
-        Pawn(white, Square("a2")),
-        Pawn(white, Square("b2")),
-        Pawn(white, Square("c2")),
-        Pawn(white, Square("d2")),
-        Pawn(white, Square("e2")),
-        Pawn(white, Square("f2")),
-        Pawn(white, Square("g2")),
-        Pawn(white, Square("h2")),
+        Rook(white, Square.from_notation("a1")),
+        Rook(white, Square.from_notation("h1")),
+        Knight(white, Square.from_notation("b1")),
+        Knight(white, Square.from_notation("g1")),
+        Bishop(white, Square.from_notation("c1")),
+        Bishop(white, Square.from_notation("f1")),
+        Queen(white, Square.from_notation("d1")),
+        King(white, Square.from_notation("e1")),
+        Pawn(white, Square.from_notation("a2")),
+        Pawn(white, Square.from_notation("b2")),
+        Pawn(white, Square.from_notation("c2")),
+        Pawn(white, Square.from_notation("d2")),
+        Pawn(white, Square.from_notation("e2")),
+        Pawn(white, Square.from_notation("f2")),
+        Pawn(white, Square.from_notation("g2")),
+        Pawn(white, Square.from_notation("h2")),
 
-        Rook(black, Square("a8")),
-        Rook(black, Square("h8")),
-        Knight(black, Square("b8")),
-        Knight(black, Square("g8")),
-        Bishop(black, Square("c8")),
-        Bishop(black, Square("f8")),
-        Queen(black, Square("d8")),
-        King(black, Square("e8")),
-        Pawn(black, Square("a7")),
-        Pawn(black, Square("b7")),
-        Pawn(black, Square("c7")),
-        Pawn(black, Square("d7")),
-        Pawn(black, Square("e7")),
-        Pawn(black, Square("f7")),
-        Pawn(black, Square("g7")),
-        Pawn(black, Square("h7")),
+        Rook(black, Square.from_notation("a8")),
+        Rook(black, Square.from_notation("h8")),
+        Knight(black, Square.from_notation("b8")),
+        Knight(black, Square.from_notation("g8")),
+        Bishop(black, Square.from_notation("c8")),
+        Bishop(black, Square.from_notation("f8")),
+        Queen(black, Square.from_notation("d8")),
+        King(black, Square.from_notation("e8")),
+        Pawn(black, Square.from_notation("a7")),
+        Pawn(black, Square.from_notation("b7")),
+        Pawn(black, Square.from_notation("c7")),
+        Pawn(black, Square.from_notation("d7")),
+        Pawn(black, Square.from_notation("e7")),
+        Pawn(black, Square.from_notation("f7")),
+        Pawn(black, Square.from_notation("g7")),
+        Pawn(black, Square.from_notation("h7")),
     ]
     board = Board(size=8, pieces=pieces)
     game = Game(board=board, onturn=white)
     return game
 
 def pick_move(game, candidates):
+    for m in candidates:
+        game.do_move(m)
+        if game.is_checkmate():
+            game.undo_move(m)
+            return m
+        game.undo_move(m)
     return random.choice(candidates)
 
 def test():
+    # random.seed("sedi bubak na dubu")
     game = init_game()
 
     move_count = 0
     while True:
         move_count += 1
         if game.is_over():
-            # print("Moves: " + str(move_count))
             break
 
         possible_moves = list(game.possible_moves())
