@@ -235,6 +235,85 @@ type King struct {
 	PieceBase
 }
 
+func (k *King) PossibleMoves() []*Move {
+	moves := []*Move{}
+	dirs := []DirectionName{Up, Down, Left, Right, UpLeft, UpRight, DownLeft, DownRight}
+	for i := 0; i < len(dirs); i++ {
+		vector := DirVectors[k.color][dirs[i]]
+		end := k.square.AddVector(&vector)
+		if !end.IsValid() {
+			continue
+		}
+		piece := k.board.GetPiece(end)
+		if piece != nil && piece.Color() == k.color {
+			continue
+		}
+		m := &Move{ Piece: k, End: end }
+		if piece == nil {
+			moves = append(moves, m)
+			continue
+		}
+		m.CapturedPiece = piece
+		moves = append(moves, m)
+	}
+	//TODO castles
+	return moves
+}
+
+func (k *King) Print() {
+	if k.color == White {
+		fmt.Print("k ")
+	} else {
+		fmt.Print("K ")
+	}
+}
+
+
+type Knight struct {
+	PieceBase
+}
+
+func (n *Knight) PossibleMoves() []*Move {
+	moves := []*Move{}
+	vectors := []Vector {
+		Vector{x: 1, y: 2},
+		Vector{x: -1, y: 2},
+		Vector{x: 1, y: -2},
+		Vector{x: -1, y: -2},
+		Vector{x: 2, y: 1},
+		Vector{x: -2, y: 1},
+		Vector{x: 2, y: -1},
+		Vector{x: -2, y: -1},
+	}
+	for i := 0; i < len(vectors); i++ {
+		vector := vectors[i]
+		end := n.square.AddVector(&vector)
+		if !end.IsValid() {
+			continue
+		}
+		piece := n.board.GetPiece(end)
+		if piece != nil && piece.Color() == n.color {
+			continue
+		}
+		m := &Move{ Piece: n, End: end }
+		if piece == nil {
+			moves = append(moves, m)
+			continue
+		}
+		m.CapturedPiece = piece
+		moves = append(moves, m)
+	}
+	return moves
+}
+
+func (n *Knight) Print() {
+	if n.color == White {
+		fmt.Print("n ")
+	} else {
+		fmt.Print("N ")
+	}
+}
+
 
 type Pawn struct {
 	PieceBase
@@ -401,6 +480,9 @@ func InitBoard() *Board {
 		&Bishop{ StraightGoer{ PieceBase {color: White, square: &Square{x: 0, y: 2}, board: board }}},
 		&Bishop{ StraightGoer{ PieceBase {color: White, square: &Square{x: 0, y: 5}, board: board }}},
 		&Queen{ StraightGoer{ PieceBase {color: White, square: &Square{x: 0, y: 3}, board: board }}},
+		&Knight{ PieceBase {color: White, square: &Square{x: 0, y: 1}, board: board }},
+		&Knight{ PieceBase {color: White, square: &Square{x: 0, y: 6}, board: board }},
+		&King{ PieceBase {color: White, square: &Square{x: 0, y: 4}, board: board }},
 		&Pawn{ PieceBase {color: White, square: &Square{x: 1, y: 0}, board: board }},
 		&Pawn{ PieceBase {color: White, square: &Square{x: 1, y: 1}, board: board }},
 		&Pawn{ PieceBase {color: White, square: &Square{x: 1, y: 2}, board: board }},
@@ -415,6 +497,9 @@ func InitBoard() *Board {
 		&Bishop{ StraightGoer{ PieceBase {color: Black, square: &Square{x: 7, y: 2}, board: board }}},
 		&Bishop{ StraightGoer{ PieceBase {color: Black, square: &Square{x: 7, y: 5}, board: board }}},
 		&Queen{ StraightGoer{ PieceBase {color: Black, square: &Square{x: 7, y: 3}, board: board }}},
+		&Knight{ PieceBase {color: Black, square: &Square{x: 7, y: 1}, board: board }},
+		&Knight{ PieceBase {color: Black, square: &Square{x: 7, y: 6}, board: board }},
+		&King{ PieceBase {color: Black, square: &Square{x: 7, y: 4}, board: board }},
 		&Pawn{ PieceBase {color: Black, square: &Square{x: 6, y: 0}, board: board }},
 		&Pawn{ PieceBase {color: Black, square: &Square{x: 6, y: 1}, board: board }},
 		&Pawn{ PieceBase {color: Black, square: &Square{x: 6, y: 2}, board: board }},
