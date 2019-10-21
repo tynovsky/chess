@@ -108,6 +108,21 @@ func (b *Board) getKing(c Color) *King {
 
 func (b *Board) possibleMoves(color Color) []*Move {
 	moves := []*Move{}
+	candidates := b.moveCandidates(color)
+	for i := 0; i < len(candidates); i++ {
+		m := candidates[i]
+		b.doMove(m)
+		king := b.getKing(color)
+		if !king.IsInCheck() {
+			moves = append(moves, m)
+		}
+		b.undoMove(m)
+	}
+	return moves
+}
+
+func (b *Board) moveCandidates(color Color) []*Move {
+	moves := []*Move{}
 	pieces := b.getPieces()
 	for i := 0; i < len(pieces); i++ {
 		piece := pieces[i]
@@ -115,17 +130,10 @@ func (b *Board) possibleMoves(color Color) []*Move {
 			continue
 		}
 		possibleMoves := piece.PossibleMoves()
-		for j := 0; j < len(possibleMoves); j++ {
-			m := possibleMoves[j]
-			b.doMove(m)
-			king := b.getKing(color)
-			if !king.IsInCheck() {
-				moves = append(moves, m)
-			}
-			b.undoMove(m)
-		}
+		moves = append(moves, possibleMoves...)
 	}
 	return moves
+
 }
 
 func (b *Board) Print() {
@@ -362,7 +370,12 @@ func (k *King) Print() {
 }
 
 func (k *King) IsInCheck() bool {
-	//TODO
+	candidates := k.board.moveCandidates(-k.color)
+	for i := 0; i < len(candidates); i++ {
+		if candidates[i].CapturedPiece == k {
+			return true
+		}
+	}
 	return false
 }
 
@@ -623,10 +636,14 @@ func main() {
 		Board: board,
 		OnTurn: White,
 	}
-	for i:=0; i<100; i++ {
+	for i:=0; i<1000; i++ {
 		board.Print()
 		fmt.Println("------")
 		moves := game.possibleMoves()
+		if len(moves) == 0 {
+			fmt.Println("game over")
+			break
+		}
 		move := moves[rand.Intn(len(moves))]
 		game.doMove(move)
 	}
