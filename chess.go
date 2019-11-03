@@ -53,6 +53,21 @@ func (b *Board) doMove(m *Move) {
 		b.Grid[m.CapturedPiece.Square().x][m.CapturedPiece.Square().y] = nil
 	}
 	b.Grid[m.End.x][m.End.y] = m.Piece
+        if m.ShortCastle {
+		sq := &Square{x: 7, y: m.Start.y}
+		rook := b.GetPiece(sq).(*Rook)
+		rook.square.x = 5
+		b.Grid[7][m.Start.y] = nil
+		b.Grid[5][m.Start.y] = rook
+	}
+        if m.LongCastle {
+		sq := &Square{x: 0, y: m.Start.y}
+		rook := b.GetPiece(sq).(*Rook)
+		rook.square.x = 3
+		b.Grid[0][m.Start.y] = nil
+		b.Grid[3][m.Start.y] = rook
+	}
+	//TODO en-passant
 }
 
 func (b *Board) undoMove(m *Move) {
@@ -63,6 +78,22 @@ func (b *Board) undoMove(m *Move) {
 	if m.CapturedPiece != nil {
 		b.Grid[m.CapturedPiece.Square().x][m.CapturedPiece.Square().y] = m.CapturedPiece
 	}
+        if m.ShortCastle {
+		sq := &Square{x: 5, y: m.Start.y}
+		rook := b.GetPiece(sq).(*Rook)
+		rook.square.x = 7
+		b.Grid[5][m.Start.y] = nil
+		b.Grid[7][m.Start.y] = rook
+	}
+        if m.LongCastle {
+		sq := &Square{x: 3, y: m.Start.y}
+		rook := b.GetPiece(sq).(*Rook)
+		rook.square.x = 0
+		b.Grid[3][m.Start.y] = nil
+		b.Grid[0][m.Start.y] = rook
+	}
+	//TODO castle
+	//TODO en-passant
 }
 
 func (b *Board) setPieces(pieces []Piece) {
@@ -133,7 +164,51 @@ func (b *Board) moveCandidates(color Color) []*Move {
 		moves = append(moves, possibleMoves...)
 	}
 	return moves
+}
 
+//TODO: tests
+func (b *Board) IsAttacked(square *Square, color Color) bool {
+	knight := &Knight{ PieceBase {color: color, square: square, board: b}}
+	moves := knight.PossibleMoves()
+	for i := 0; i < len(moves); i++ {
+		m := moves[i]
+		if _, ok := m.CapturedPiece.(*Knight); ok {
+			return true
+		}
+	}
+	bishop := &Bishop{ StraightGoer{ PieceBase {color: color, square: square, board: b}}}
+	moves = bishop.PossibleMoves()
+	for i := 0; i < len(moves); i++ {
+		m := moves[i]
+		if _, ok := m.CapturedPiece.(*Bishop); ok {
+			return true
+		}
+	}
+	rook := &Rook{ StraightGoer{ PieceBase {color: color, square: square, board: b}}}
+	moves = rook.PossibleMoves()
+	for i := 0; i < len(moves); i++ {
+		m := moves[i]
+		if _, ok := m.CapturedPiece.(*Rook); ok {
+			return true
+		}
+	}
+	queen := &Queen{ StraightGoer{ PieceBase {color: color, square: square, board: b}}}
+	moves = queen.PossibleMoves()
+	for i := 0; i < len(moves); i++ {
+		m := moves[i]
+		if _, ok := m.CapturedPiece.(*Queen); ok {
+			return true
+		}
+	}
+	pawn := &Pawn{ PieceBase {color: color, square: square, board: b}}
+	moves = pawn.PossibleCaptures()
+	for i := 0; i < len(moves); i++ {
+		m := moves[i]
+		if _, ok := m.CapturedPiece.(*Pawn); ok {
+			return true
+		}
+	}
+	return false
 }
 
 func (b *Board) Print() {
@@ -357,7 +432,81 @@ func (k *King) PossibleMoves() []*Move {
 		m.CapturedPiece = piece
 		moves = append(moves, m)
 	}
-	//TODO castles
+	moves = append(moves, k.ShortCastle()...)
+	moves = append(moves, k.LongCastle()...)
+
+	return moves
+}
+
+func (k *King) ShortCastle() []*Move {
+	moves := []*Move{}
+	if k.moveCounter > 0 {
+		return moves
+	}
+	y := k.square.y
+	rookPiece := k.board.GetPiece(&Square{x: 7, y: y})
+	if rookPiece == nil {
+		return moves
+	}
+	rook, ok := rookPiece.(*Rook)
+	if !ok {
+		return moves
+	}
+	if rook.moveCounter > 0 {
+		return moves
+	}
+
+	for x := int8(5); x < 7; x++ {
+		sq := &Square{x: x, y: y}
+		if k.board.GetPiece(sq) != nil {
+			return moves
+		}
+	}
+	for x := int8(4); x < 7; x++ {
+		sq := &Square{x: x, y: y}
+		if k.board.IsAttacked(sq, k.color) {
+			return moves
+		}
+	}
+	end := &Square{x: 6, y: y}
+	m := &Move{Piece: k, Start: k.Square(), End: end, ShortCastle: true}
+	moves = append(moves, m)
+	return moves
+}
+
+func (k *King) LongCastle() []*Move {
+	moves := []*Move{}
+	if k.moveCounter > 0 {
+		return moves
+	}
+	y := k.square.y
+	rookPiece := k.board.GetPiece(&Square{x: 0, y: y})
+	if rookPiece == nil {
+		return moves
+	}
+	rook, ok := rookPiece.(*Rook)
+	if !ok {
+		return moves
+	}
+	if rook.moveCounter > 0 {
+		return moves
+	}
+
+	for x := int8(1); x < 4; x++ {
+		sq := &Square{x: x, y: y}
+		if k.board.GetPiece(sq) != nil {
+			return moves
+		}
+	}
+	for x := int8(2); x < 5; x++ {
+		sq := &Square{x: x, y: y}
+		if k.board.IsAttacked(sq, k.color) {
+			return moves
+		}
+	}
+	end := &Square{x: 2, y: y}
+	m := &Move{Piece: k, Start: k.Square(), End: end, LongCastle: true}
+	moves = append(moves, m)
 	return moves
 }
 
@@ -585,6 +734,8 @@ type Move struct {
 	End *Square
 	CapturedPiece Piece
 	PromoteTo Piece
+	LongCastle bool
+	ShortCastle bool
 }
 
 func InitBoard() *Board {
@@ -644,7 +795,26 @@ func main() {
 			fmt.Println("game over")
 			break
 		}
-		move := moves[rand.Intn(len(moves))]
+		which := rand.Intn(len(moves))
+
+		// do castle whenever possible
+		for j:=0; j<len(moves); j++ {
+			m := moves[j]
+			if m.ShortCastle {
+				which = j
+			}
+			if m.LongCastle {
+				which = j
+			}
+		}
+
+		move := moves[which]
 		game.doMove(move)
+		if move.ShortCastle {
+			fmt.Println("short castle")
+		}
+		if move.LongCastle {
+			fmt.Println("long castle")
+		}
 	}
 }
