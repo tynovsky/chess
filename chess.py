@@ -50,7 +50,7 @@ class Board:
 
     def do_move(self, move):
         move.piece.moved += 1
-        shadow = move.shadow_removed = self.shadow
+        move.shadow_removed = self.shadow
         self.shadow = move.shadow_added
 
         if move.promote_to:

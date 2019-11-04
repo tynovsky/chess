@@ -33,7 +33,7 @@ func (g *Game) undoMove(move *Move) {
 
 type Board struct {
 	Grid [Size][Size]Piece
-	Shadow Square
+	EnpassantSquare *Square
 }
 
 func (b *Board) GetPiece(s *Square) Piece {
@@ -41,6 +41,8 @@ func (b *Board) GetPiece(s *Square) Piece {
 }
 
 func (b *Board) doMove(m *Move) {
+	m.EnpassantSquareRemoved = b.EnpassantSquare
+	b.EnpassantSquare = m.EnpassantSquareAdded
 	if m.PromoteTo != nil {
 		b.Grid[m.Start.x][m.Start.y] = nil
 		b.Grid[m.End.x][m.End.y] = m.PromoteTo
@@ -67,10 +69,10 @@ func (b *Board) doMove(m *Move) {
 		b.Grid[0][m.Start.y] = nil
 		b.Grid[3][m.Start.y] = rook
 	}
-	//TODO en-passant
 }
 
 func (b *Board) undoMove(m *Move) {
+	b.EnpassantSquare = m.EnpassantSquareRemoved
 	m.Piece.undoMove(m.Start)
 	b.Grid[m.Start.x][m.Start.y] = m.Piece
 	b.Grid[m.End.x][m.End.y] = nil
@@ -92,8 +94,6 @@ func (b *Board) undoMove(m *Move) {
 		b.Grid[3][m.Start.y] = nil
 		b.Grid[0][m.Start.y] = rook
 	}
-	//TODO castle
-	//TODO en-passant
 }
 
 func (b *Board) setPieces(pieces []Piece) {
@@ -599,23 +599,43 @@ func (p *Pawn) PossibleNonCaptures() []*Move {
 	m := &Move{ Piece: p, Start: p.Square(), End: end }
 	if p.Row() == 1 {
 		noncaptures = append(noncaptures, m)
-		end = end.AddVector(&vector)
-		if piece := p.board.GetPiece(end); piece != nil {
+		newEnd := end.AddVector(&vector)
+		if piece := p.board.GetPiece(newEnd); piece != nil {
 			return noncaptures
 		}
-		m = &Move{ Piece: p, Start: p.Square(), End: end }
+		m = &Move{ Piece: p, Start: p.Square(), End: newEnd, EnpassantSquareAdded: end }
 		return append(noncaptures, m)
 	}
 	if p.Row() == 6 {
 		queen := &Queen{ StraightGoer{ PieceBase {color: p.color, square: end, board: p.board }}}
-		m = &Move{
+		rook := &Rook{ StraightGoer{ PieceBase {color: p.color, square: end, board: p.board }}}
+		bishop := &Bishop{ StraightGoer{ PieceBase {color: p.color, square: end, board: p.board }}}
+		knight := &Knight{ PieceBase {color: p.color, square: end, board: p.board }}
+		m1 := &Move{
 			Piece: p,
 			Start: p.Square(),
 			End: end,
 			PromoteTo: queen,
 		}
-		//TODO: other promotions
-		return append(noncaptures, m)
+		m2 := &Move{
+			Piece: p,
+			Start: p.Square(),
+			End: end,
+			PromoteTo: rook,
+		}
+		m3 := &Move{
+			Piece: p,
+			Start: p.Square(),
+			End: end,
+			PromoteTo: bishop,
+		}
+		m4 := &Move{
+			Piece: p,
+			Start: p.Square(),
+			End: end,
+			PromoteTo: knight,
+		}
+		return append(noncaptures, m1, m2, m3, m4)
 	}
 	return append(noncaptures, m)
 }
@@ -629,22 +649,56 @@ func (p *Pawn) PossibleCaptures() []*Move {
 		if !end.IsValid() {
 			continue
 		}
-		//TODO: en-passant
+		if p.board.EnpassantSquare != nil && *end == *p.board.EnpassantSquare {
+			vector := DirVectors[p.color][Down]
+			capturedPiece := p.board.GetPiece(end.AddVector(&vector))
+			m := &Move{
+				Piece: p,
+				Start: p.Square(),
+				End: end,
+				CapturedPiece: capturedPiece,
+			}
+			captures = append(captures, m)
+			continue
+		}
 		capturedPiece := p.board.GetPiece(end)
 		if capturedPiece == nil || capturedPiece.Color() == p.color {
 			continue
 		}
 		if p.Row() == 6 {
 			queen := &Queen{ StraightGoer{ PieceBase {color: p.color, square: end, board: p.board }}}
-			m := &Move{
+			rook := &Rook{ StraightGoer{ PieceBase {color: p.color, square: end, board: p.board }}}
+			bishop := &Bishop{ StraightGoer{ PieceBase {color: p.color, square: end, board: p.board }}}
+			knight := &Knight{ PieceBase {color: p.color, square: end, board: p.board }}
+			m1 := &Move{
 				Piece: p,
 				Start: p.Square(),
 				End: end,
 				CapturedPiece: capturedPiece,
 				PromoteTo: queen,
 			}
-			//TODO: other promotions
-			captures = append(captures, m)
+			m2 := &Move{
+				Piece: p,
+				Start: p.Square(),
+				End: end,
+				CapturedPiece: capturedPiece,
+				PromoteTo: rook,
+			}
+			m3 := &Move{
+				Piece: p,
+				Start: p.Square(),
+				End: end,
+				CapturedPiece: capturedPiece,
+				PromoteTo: bishop,
+			}
+			m4 := &Move{
+				Piece: p,
+				Start: p.Square(),
+				End: end,
+				CapturedPiece: capturedPiece,
+				PromoteTo: knight,
+			}
+			captures = append(captures, m1, m2, m3, m4)
 		} else {
 			m := &Move{
 				Piece: p,
@@ -736,6 +790,8 @@ type Move struct {
 	PromoteTo Piece
 	LongCastle bool
 	ShortCastle bool
+	EnpassantSquareAdded *Square
+	EnpassantSquareRemoved *Square
 }
 
 func InitBoard() *Board {
@@ -800,21 +856,31 @@ func main() {
 		// do castle whenever possible
 		for j:=0; j<len(moves); j++ {
 			m := moves[j]
-			if m.ShortCastle {
-				which = j
+			if m.CapturedPiece != nil {
+				if board.EnpassantSquare != nil && *board.EnpassantSquare == *m.End {
+					which = j
+					fmt.Println("pick: en passant")
+					break
+				}
 			}
-			if m.LongCastle {
-				which = j
-			}
+			// if m.EnpassantSquareAdded != nil {
+			// 	which = j
+			// 	fmt.Println("pick: pawn by two")
+			// 	break
+			// }
+			// if m.ShortCastle {
+			// 	which = j
+			// 	fmt.Println("pick: short castle")
+			// 	break
+			// }
+			// if m.LongCastle {
+			// 	which = j
+			// 	fmt.Println("pick: long castle")
+			// 	break
+			// }
 		}
 
 		move := moves[which]
 		game.doMove(move)
-		if move.ShortCastle {
-			fmt.Println("short castle")
-		}
-		if move.LongCastle {
-			fmt.Println("long castle")
-		}
 	}
 }
