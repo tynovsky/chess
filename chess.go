@@ -80,6 +80,17 @@ func (g *Game) isOver() bool {
 	return true
 }
 
+func (g *Game) isCheckmate() bool {
+	king := g.Board.getKing(g.OnTurn)
+	if !king.IsInCheck() {
+		return false
+	}
+	if len(g.possibleMoves()) > 0 {
+		return false
+	}
+	return true
+}
+
 type Board struct {
 	Grid [Size][Size]Piece
 	EnpassantSquare *Square
@@ -901,8 +912,15 @@ func main() {
 		moves := game.possibleMoves()
 		which := rand.Intn(len(moves))
 
-		// for j:=0; j<len(moves); j++ {
-			// m := moves[j]
+		for j:=0; j<len(moves); j++ {
+			m := moves[j]
+			game.doMove(m)
+			if game.isCheckmate() {
+				game.undoMove(m)
+				which = j
+				break
+			}
+			game.undoMove(m)
 			// if m.CapturedPiece != nil {
 			// 	if board.EnpassantSquare != nil && *board.EnpassantSquare == *m.End {
 			// 		which = j
@@ -925,7 +943,7 @@ func main() {
 			// 	fmt.Println("pick: long castle")
 			// 	break
 			// }
-		// }
+		}
 
 		move := moves[which]
 		game.doMove(move)
