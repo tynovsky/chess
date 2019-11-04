@@ -31,6 +31,55 @@ func (g *Game) undoMove(move *Move) {
 	g.OnTurn = -g.OnTurn
 }
 
+func (g *Game) isOver() bool {
+	if len(g.possibleMoves()) == 0 {
+		return true
+	}
+
+	pieces := g.Board.getPieces()
+	whiteKnights := 0
+	whiteBishops := 0
+	blackKnights := 0
+	blackBishops := 0
+	for i := 0; i < len(pieces); i++ {
+		p := pieces[i]
+		if _, ok := p.(*Queen); ok {
+			return false
+		}
+		if _, ok := p.(*Rook); ok {
+			return false
+		}
+		if _, ok := p.(*Pawn); ok {
+			return false
+		}
+		if _, ok := p.(*Knight); ok {
+			if p.Color() == White {
+				whiteKnights++
+			} else {
+				blackKnights++
+			}
+		}
+		if _, ok := p.(*Bishop); ok {
+			if p.Color() == White {
+				whiteBishops++
+			} else {
+				blackBishops++
+			}
+		}
+	}
+	if whiteBishops >= 2 || blackBishops >= 2 {
+		return false
+	}
+
+	if whiteBishops == 1 && whiteKnights > 0 {
+		return false
+	}
+	if blackBishops == 1 && blackKnights > 0 {
+		return false
+	}
+	return true
+}
+
 type Board struct {
 	Grid [Size][Size]Piece
 	EnpassantSquare *Square
@@ -843,26 +892,24 @@ func main() {
 		Board: board,
 		OnTurn: White,
 	}
-	for i:=0; i<1000; i++ {
+	for {
 		board.Print()
 		fmt.Println("------")
-		moves := game.possibleMoves()
-		if len(moves) == 0 {
-			fmt.Println("game over")
+		if game.isOver() {
 			break
 		}
+		moves := game.possibleMoves()
 		which := rand.Intn(len(moves))
 
-		// do castle whenever possible
-		for j:=0; j<len(moves); j++ {
-			m := moves[j]
-			if m.CapturedPiece != nil {
-				if board.EnpassantSquare != nil && *board.EnpassantSquare == *m.End {
-					which = j
-					fmt.Println("pick: en passant")
-					break
-				}
-			}
+		// for j:=0; j<len(moves); j++ {
+			// m := moves[j]
+			// if m.CapturedPiece != nil {
+			// 	if board.EnpassantSquare != nil && *board.EnpassantSquare == *m.End {
+			// 		which = j
+			// 		fmt.Println("pick: en passant")
+			// 		break
+			// 	}
+			// }
 			// if m.EnpassantSquareAdded != nil {
 			// 	which = j
 			// 	fmt.Println("pick: pawn by two")
@@ -878,7 +925,7 @@ func main() {
 			// 	fmt.Println("pick: long castle")
 			// 	break
 			// }
-		}
+		// }
 
 		move := moves[which]
 		game.doMove(move)
