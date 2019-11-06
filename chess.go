@@ -673,7 +673,7 @@ func (p *Pawn) PossibleNonCaptures() []*Move {
 		m = &Move{ Piece: p, Start: p.Square(), End: newEnd, EnpassantSquareAdded: end }
 		return append(noncaptures, m)
 	}
-	if p.Row() == 6 {
+	if p.Row() == 7 {
 		queen := &Queen{ StraightGoer{ PieceBase {color: p.color, square: end, board: p.board }}}
 		rook := &Rook{ StraightGoer{ PieceBase {color: p.color, square: end, board: p.board }}}
 		bishop := &Bishop{ StraightGoer{ PieceBase {color: p.color, square: end, board: p.board }}}
@@ -732,7 +732,7 @@ func (p *Pawn) PossibleCaptures() []*Move {
 		if capturedPiece == nil || capturedPiece.Color() == p.color {
 			continue
 		}
-		if p.Row() == 6 {
+		if p.Row() == 7 {
 			queen := &Queen{ StraightGoer{ PieceBase {color: p.color, square: end, board: p.board }}}
 			rook := &Rook{ StraightGoer{ PieceBase {color: p.color, square: end, board: p.board }}}
 			bishop := &Bishop{ StraightGoer{ PieceBase {color: p.color, square: end, board: p.board }}}
