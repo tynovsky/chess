@@ -280,6 +280,7 @@ func (b *Board) Print() {
 				continue
 			}
 			piece.Print()
+			fmt.Print(" ")
 		}
 		fmt.Println()
 	}
@@ -308,6 +309,12 @@ func (s *Square) Direction(color Color, directionName DirectionName) []*Square {
 		sq = sq.AddVector(&v)
 	}
 	return squares
+}
+
+func (s *Square) Print() {
+	x := int('a') + int(s.x)
+	y := 1 + s.y
+	fmt.Printf("%c%d", x, y)
 }
 
 type Vector struct {
@@ -572,9 +579,9 @@ func (k *King) LongCastle() []*Move {
 
 func (k *King) Print() {
 	if k.color == White {
-		fmt.Print("♚ ")
+		fmt.Print("♚")
 	} else {
-		fmt.Print("♔ ")
+		fmt.Print("♔")
 	}
 }
 
@@ -628,9 +635,9 @@ func (n *Knight) PossibleMoves() []*Move {
 
 func (n *Knight) Print() {
 	if n.color == White {
-		fmt.Print("♞ ")
+		fmt.Print("♞")
 	} else {
-		fmt.Print("♘ ")
+		fmt.Print("♘")
 	}
 }
 
@@ -774,9 +781,9 @@ func (p *Pawn) PossibleCaptures() []*Move {
 
 func (p *Pawn) Print() {
 	if p.color == White {
-		fmt.Print("♟ ")
+		fmt.Print("♟")
 	} else {
-		fmt.Print("♙ ")
+		fmt.Print("♙")
 	}
 }
 
@@ -794,9 +801,9 @@ func (r *Rook) PossibleMoves() []*Move {
 
 func (r *Rook) Print() {
 	if r.color == White {
-		fmt.Print("♜ ")
+		fmt.Print("♜")
 	} else {
-		fmt.Print("♖ ")
+		fmt.Print("♖")
 	}
 }
 
@@ -815,9 +822,9 @@ func (b *Bishop) PossibleMoves() []*Move {
 
 func (b *Bishop) Print() {
 	if b.color == White {
-		fmt.Print("♝ ")
+		fmt.Print("♝")
 	} else {
-		fmt.Print("♗ ")
+		fmt.Print("♗")
 	}
 }
 
@@ -836,9 +843,9 @@ func (q *Queen) PossibleMoves() []*Move {
 
 func (q *Queen) Print() {
 	if q.color == White {
-		fmt.Print("♛ ")
+		fmt.Print("♛")
 	} else {
-		fmt.Print("♕ ")
+		fmt.Print("♕")
 	}
 }
 
@@ -853,6 +860,32 @@ type Move struct {
 	EnpassantSquareAdded *Square
 	EnpassantSquareRemoved *Square
 }
+
+func (m *Move) Print() {
+	if m.LongCastle {
+		fmt.Println("O-O-O")
+		return
+	}
+	if m.ShortCastle {
+		fmt.Println("O-O")
+		return
+	}
+
+	m.Piece.Print()
+	m.Start.Print()
+	if m.CapturedPiece == nil {
+		fmt.Print("-")
+	} else {
+		fmt.Print("x")
+	}
+	m.End.Print()
+	if m.PromoteTo != nil {
+		fmt.Print(" --> ")
+		m.PromoteTo.Print()
+	}
+	fmt.Println()
+}
+
 
 func InitBoard() *Board {
 	board := &Board{}
@@ -903,9 +936,10 @@ func main() {
 		Board: board,
 		OnTurn: White,
 	}
+	i := 1
 	for {
 		board.Print()
-		fmt.Println("------")
+		fmt.Println("---------------")
 		if game.isOver() {
 			break
 		}
@@ -947,5 +981,13 @@ func main() {
 
 		move := moves[which]
 		game.doMove(move)
+		if move.Piece.Color() == White {
+			fmt.Printf("%d. ", i)
+		} else {
+			fmt.Printf("%d. ... ", i)
+			i++
+		}
+
+		move.Print()
 	}
 }
