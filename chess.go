@@ -273,10 +273,15 @@ func (b *Board) IsAttacked(square *Square, color Color) bool {
 
 func (b *Board) Print() {
 	for i := Size - 1; i >= 0; i-- {
+		fmt.Printf("%c ", int('₁') + int(i))
 		for j := Size - Size; j < Size; j++ {
 			piece := b.Grid[j][i]
 			if piece == nil {
-				fmt.Print(". ")
+				if (i + j) % 2 == 0 {
+					fmt.Print("\033[90m", "· ", "\033[0m")
+				} else {
+					fmt.Print("· ")
+				}
 				continue
 			}
 			piece.Print()
@@ -284,6 +289,7 @@ func (b *Board) Print() {
 		}
 		fmt.Println()
 	}
+	fmt.Println("  ᵃ ᵇ ᶜ ᵈ ᵉ ᶠ ᵍ ʰ")
 }
 
 
@@ -939,7 +945,7 @@ func main() {
 	i := 1
 	for {
 		board.Print()
-		fmt.Println("---------------")
+		fmt.Println("-----------------")
 		if game.isOver() {
 			break
 		}

@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 
 from enum import IntEnum
-from termcolor import colored, cprint
-from pprint import pprint
+# from termcolor import cprint
 import random
 import time
 
@@ -25,10 +24,11 @@ class Board:
             print(chr(ord("₁")+j), end=' ')
             for i in range(0, self.size):
                 piece = self.grid[i][j]
-                square_color = 'grey' if (i + j)%2==0 else 'white'
                 if piece is None:
-                    #cprint("■ ", square_color, end='')
-                    cprint("· ", square_color, end='')
+                    if (i + j) % 2 == 0:
+                        print('\33[90m' + "· " + '\33[0m', end='')
+                    else:
+                        print("· ", end='')
                 else:
                     print(str(piece) + " ", end='')
             print()
