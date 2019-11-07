@@ -115,14 +115,14 @@ func (b *Board) doMove(m *Move) {
 		b.Grid[m.CapturedPiece.Square().x][m.CapturedPiece.Square().y] = nil
 	}
 	b.Grid[m.End.x][m.End.y] = m.Piece
-        if m.ShortCastle {
+	if m.ShortCastle {
 		sq := &Square{x: 7, y: m.Start.y}
 		rook := b.GetPiece(sq).(*Rook)
 		rook.square.x = 5
 		b.Grid[7][m.Start.y] = nil
 		b.Grid[5][m.Start.y] = rook
 	}
-        if m.LongCastle {
+	if m.LongCastle {
 		sq := &Square{x: 0, y: m.Start.y}
 		rook := b.GetPiece(sq).(*Rook)
 		rook.square.x = 3
@@ -140,14 +140,14 @@ func (b *Board) undoMove(m *Move) {
 	if m.CapturedPiece != nil {
 		b.Grid[m.CapturedPiece.Square().x][m.CapturedPiece.Square().y] = m.CapturedPiece
 	}
-        if m.ShortCastle {
+	if m.ShortCastle {
 		sq := &Square{x: 5, y: m.Start.y}
 		rook := b.GetPiece(sq).(*Rook)
 		rook.square.x = 7
 		b.Grid[5][m.Start.y] = nil
 		b.Grid[7][m.Start.y] = rook
 	}
-        if m.LongCastle {
+	if m.LongCastle {
 		sq := &Square{x: 3, y: m.Start.y}
 		rook := b.GetPiece(sq).(*Rook)
 		rook.square.x = 0
@@ -381,7 +381,7 @@ func (p *PieceBase) Row() int8 {
 	if p.color == White {
 		return p.square.y
 	} else {
-		return Size - p.square.y
+		return Size - p.square.y - 1
 	}
 }
 
@@ -673,7 +673,7 @@ func (p *Pawn) PossibleNonCaptures() []*Move {
 		m = &Move{ Piece: p, Start: p.Square(), End: newEnd, EnpassantSquareAdded: end }
 		return append(noncaptures, m)
 	}
-	if p.Row() == 7 {
+	if p.Row() == 6 {
 		queen := &Queen{ StraightGoer{ PieceBase {color: p.color, square: end, board: p.board }}}
 		rook := &Rook{ StraightGoer{ PieceBase {color: p.color, square: end, board: p.board }}}
 		bishop := &Bishop{ StraightGoer{ PieceBase {color: p.color, square: end, board: p.board }}}
@@ -732,7 +732,7 @@ func (p *Pawn) PossibleCaptures() []*Move {
 		if capturedPiece == nil || capturedPiece.Color() == p.color {
 			continue
 		}
-		if p.Row() == 7 {
+		if p.Row() == 6 {
 			queen := &Queen{ StraightGoer{ PieceBase {color: p.color, square: end, board: p.board }}}
 			rook := &Rook{ StraightGoer{ PieceBase {color: p.color, square: end, board: p.board }}}
 			bishop := &Bishop{ StraightGoer{ PieceBase {color: p.color, square: end, board: p.board }}}
