@@ -14,45 +14,32 @@ ROOK_NOTMOVED = 6
 QUEEN = 7
 KING = 8
 KING_NOTMOVED = 9
-
-def initial_board():
-    return [
-        ROOK_NOTMOVED, KNIGHT, BISHOP, QUEEN,
-        KING_NOTMOVED, BISHOP, KNIGHT, ROOK_NOTMOVED,
-        PAWN, PAWN, PAWN, PAWN, PAWN, PAWN, PAWN, PAWN,
-        0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0,
-        -PAWN, -PAWN, -PAWN, -PAWN, -PAWN, -PAWN, -PAWN, -PAWN,
-        -ROOK_NOTMOVED, -KNIGHT, -BISHOP, -QUEEN,
-        -KING_NOTMOVED, -BISHOP, -KNIGHT, -ROOK_NOTMOVED,
-    ]
-
-def rook_dirs():
-    return [[0,1],[0,-1],[1,0],[-1,0]]
-
-def bishop_dirs():
-    return [[1,1],[1,-1],[-1,1],[-1,-1]]
-
-def knight_dirs():
-    return [[1,2],[-1,2],[1,-2],[-1,-2],[2,1],[-2,1],[2,-1],[-2,-1]]
-
-def queen_dirs():
-    return rook_dirs() + bishop_dirs()
+ROOK_DIRS = [[0,1],[0,-1],[1,0],[-1,0]]
+BISHOP_DIRS = [[1,1],[1,-1],[-1,1],[-1,-1]]
+KNIGHT_DIRS = [[1,2],[-1,2],[1,-2],[-1,-2],[2,1],[-2,1],[2,-1],[-2,-1]]
+QUEEN_DIRS = ROOK_DIRS + BISHOP_DIRS
+INITIAL_BOARD = [
+    ROOK_NOTMOVED, KNIGHT, BISHOP, QUEEN,
+    KING_NOTMOVED, BISHOP, KNIGHT, ROOK_NOTMOVED,
+    PAWN, PAWN, PAWN, PAWN, PAWN, PAWN, PAWN, PAWN,
+] + [0] * 32 + [
+    -PAWN, -PAWN, -PAWN, -PAWN, -PAWN, -PAWN, -PAWN, -PAWN,
+    -ROOK_NOTMOVED, -KNIGHT, -BISHOP, -QUEEN,
+    -KING_NOTMOVED, -BISHOP, -KNIGHT, -ROOK_NOTMOVED,
+]
 
 def possible_moves(board):
     moves = []
     for src in range(BOARD_SIZE):
         piece = board[src]
         if piece == ROOK or piece == ROOK_NOTMOVED:
-            moves.extend(straight_moves(src, rook_dirs(), board))
+            moves.extend(straight_moves(src, ROOK_DIRS, board))
             continue
         if piece == BISHOP:
-            moves.extend(straight_moves(src, bishop_dirs(), board))
+            moves.extend(straight_moves(src, BISHOP_DIRS, board))
             continue
         if piece == QUEEN:
-            moves.extend(straight_moves(src, queen_dirs(), board))
+            moves.extend(straight_moves(src, QUEEN_DIRS, board))
             continue
         if piece == KNIGHT:
             moves.extend(knight_moves(src, board))
@@ -99,7 +86,7 @@ def straight_dsts_one_dir(src, d, board):
 
 def knight_moves(src, board):
     dsts = []
-    for d in knight_dirs():
+    for d in KNIGHT_DIRS:
         dst = jump(src, d[0], d[1])
         if dst is None or board[dst] > 0: # no dst or occupied by white
             continue
@@ -132,7 +119,7 @@ def pawn_moves(src, board):
 
 def king_moves(src, board):
     dsts = []
-    for d in queen_dirs():
+    for d in QUEEN_DIRS:
         dst = jump(src, d[0], d[1])
         if dst is None or board[dst] > 0: # no dst or occupied by white
             continue
@@ -188,13 +175,13 @@ def destinations_to_moves(src, dsts, board):
     return moves
 
 def is_attacked(pos, board):
-    for m in straight_moves(pos, rook_dirs(), board):
+    for m in straight_moves(pos, ROOK_DIRS, board):
         piece = -board[m[1]]
         if piece == ROOK or \
             piece == ROOK_NOTMOVED or \
             piece == QUEEN:
                 return True
-    for m in straight_moves(pos, bishop_dirs(), board):
+    for m in straight_moves(pos, BISHOP_DIRS, board):
         piece = -board[m[1]]
         if piece == BISHOP or piece == QUEEN:
             return True
@@ -210,7 +197,7 @@ def is_attacked(pos, board):
         if dst is not None and -board[dst] == PAWN:
             return True
 
-    for d in queen_dirs():
+    for d in QUEEN_DIRS:
         dst = jump(pos, d[0], d[1])
         if dst is not None and (-board[dst] == KING or -board[dst] == KING_NOTMOVED):
             return True
@@ -275,11 +262,15 @@ def print_board(board):
     row = ""
     for i in range(BOARD_SIZE):
         if i % 8 == 0:
+            line_no = 9 - i // 8
+            if line_no < 9: print(chr(ord("₁") + line_no), end=" ")
             print(row)
             row = ""
         row = piece[board[BOARD_SIZE-i-1]] + " " + row
 
+    print(1, end=" ")
     print(row)
+    print("  ᵃ ᵇ ᶜ ᵈ ᵉ ᶠ ᵍ ʰ")
 
 def has_sufficient_material(board):
     white_knights = 0
@@ -301,11 +292,13 @@ def has_sufficient_material(board):
         return True
     if black_bishops == 1 and black_knights > 0:
         return True
+    if white_knights > 2 or black_knights > 2:
+        return True
 
     return False
 
 def main():
-    board = initial_board()
+    board = INITIAL_BOARD
     c = 0
     while True:
         if not has_sufficient_material(board):
