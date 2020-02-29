@@ -297,7 +297,7 @@ def has_sufficient_material(board):
 
     return False
 
-def main():
+def random_play():
     board = INITIAL_BOARD
     c = 0
     while True:
@@ -314,6 +314,30 @@ def main():
         board = flip_sides(board)
         if c % 2 == 1: print_board(board)
         c += 1
+
+def count_possible_moves():
+    board = [0] * BOARD_SIZE
+    moves = []
+    for i in range(BOARD_SIZE):
+        moves.extend(straight_moves(i, QUEEN_DIRS, board))
+        moves.extend(knight_moves(i, board))
+    promotions = []
+    for m in moves:
+        if  m[0] // ROW_SIZE == 6 and \
+            m[1] // ROW_SIZE == 7 and \
+            abs(m[1] - ROW_SIZE - m[0]) <= 1:
+                promotions.append([m[0], m[1], QUEEN])
+                promotions.append([m[0], m[1], ROOK])
+                promotions.append([m[0], m[1], BISHOP])
+                promotions.append([m[0], m[1], KNIGHT])
+
+    print(len(moves))
+    moves.extend(promotions)
+    print(len(moves))
+
+def main():
+    random_play()
+    # count_possible_moves()
 
 if __name__ == "__main__":
     main()
