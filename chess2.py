@@ -165,13 +165,13 @@ def destinations_to_moves(src, dsts, board):
     for dst in dsts:
         if dst >= BOARD_SIZE - ROW_SIZE and board[src] == PAWN:
             moves.extend([
-                [src, dst, QUEEN],
-                [src, dst, ROOK],
-                [src, dst, BISHOP],
-                [src, dst, KNIGHT]
+                (src, dst, QUEEN),
+                (src, dst, ROOK),
+                (src, dst, BISHOP),
+                (src, dst, KNIGHT)
             ])
         else:
-            moves.append([src, dst, None])
+            moves.append((src, dst, None))
     return moves
 
 def is_attacked(pos, board):
@@ -208,7 +208,7 @@ def flip_sides(board):
     return [-x for x in reversed(board)]
 
 def do_move(move, board):
-    src, dst, promote_to = move[:]
+    src, dst, promote_to = move
 
     # enpassant expiration
     for i in range(BOARD_SIZE):
@@ -262,13 +262,13 @@ def print_board(board):
     row = ""
     for i in range(BOARD_SIZE):
         if i % 8 == 0:
-            line_no = 9 - i // 8
-            if line_no < 9: print(chr(ord("₁") + line_no), end=" ")
+            line_no = 8 - i // 8
+            if line_no < 8: print(chr(ord("₁") + line_no), end=" ")
             print(row)
             row = ""
         row = piece[board[BOARD_SIZE-i-1]] + " " + row
 
-    print(1, end=" ")
+    print("₁", end=" ")
     print(row)
     print("  ᵃ ᵇ ᶜ ᵈ ᵉ ᶠ ᵍ ʰ")
 
