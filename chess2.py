@@ -28,6 +28,9 @@ INITIAL_BOARD = [
     -KING_NOTMOVED, -BISHOP, -KNIGHT, -ROOK_NOTMOVED,
 ]
 
+MOVE_MAP = {}   # to be initialized
+MOVE_ARRAY = [] # to be initialized
+
 def possible_moves(board):
     moves = []
     for src in range(BOARD_SIZE):
@@ -54,16 +57,19 @@ def possible_moves(board):
     legal_moves = []
     for m in moves:
         b = board.copy()
-        do_move(m, b)
-        king_square = None
-        for i in range(BOARD_SIZE):
-            if b[i] == KING or b[i] == KING_NOTMOVED:
-                king_square = i
-                break
-        if not is_attacked(king_square, b):
-            legal_moves.append(m)
+        do_move(MOVE_MAP[m], b)
+        if not is_king_attacked(b):
+            legal_moves.append(MOVE_MAP[m])
 
     return legal_moves
+
+def is_king_attacked(b):
+    king_square = None
+    for i in range(BOARD_SIZE):
+        if b[i] == KING or b[i] == KING_NOTMOVED:
+            king_square = i
+            break
+    return is_attacked(king_square, b)
 
 def straight_moves(src, dirs, board):
     dsts = []
@@ -208,7 +214,7 @@ def flip_sides(board):
     return [-x for x in reversed(board)]
 
 def do_move(move, board):
-    src, dst, promote_to = move
+    src, dst, promote_to = MOVE_ARRAY[move]
 
     # enpassant expiration
     for i in range(BOARD_SIZE):
@@ -306,16 +312,20 @@ def random_play():
             break
         moves = possible_moves(board)
         if len(moves) == 0:
-            print("checkmate / stalemate")
+            if is_king_attacked(board):
+                print("checkmate")
+            else:
+                print("stalemate")
             break
         move = random.choice(moves)
+        print("Move number: " + str(move))
         do_move(move, board)
         if c % 2 == 0: print(c//2+1); print_board(board)
         board = flip_sides(board)
         if c % 2 == 1: print_board(board)
         c += 1
 
-def count_possible_moves():
+def initialize_move_map():
     board = [0] * BOARD_SIZE
     moves = []
     for i in range(BOARD_SIZE):
@@ -326,18 +336,21 @@ def count_possible_moves():
         if  m[0] // ROW_SIZE == 6 and \
             m[1] // ROW_SIZE == 7 and \
             abs(m[1] - ROW_SIZE - m[0]) <= 1:
-                promotions.append([m[0], m[1], QUEEN])
-                promotions.append([m[0], m[1], ROOK])
-                promotions.append([m[0], m[1], BISHOP])
-                promotions.append([m[0], m[1], KNIGHT])
-
-    print(len(moves))
+                promotions.append((m[0], m[1], QUEEN))
+                promotions.append((m[0], m[1], ROOK))
+                promotions.append((m[0], m[1], BISHOP))
+                promotions.append((m[0], m[1], KNIGHT))
     moves.extend(promotions)
-    print(len(moves))
+
+    i = 0
+    for m in moves:
+        MOVE_MAP[m] = i
+        MOVE_ARRAY.append(m)
+        i += 1
 
 def main():
+    initialize_move_map()
     random_play()
-    # count_possible_moves()
 
 if __name__ == "__main__":
     main()
