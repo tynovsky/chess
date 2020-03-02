@@ -18,17 +18,11 @@ ROOK_DIRS = [[0,1],[0,-1],[1,0],[-1,0]]
 BISHOP_DIRS = [[1,1],[1,-1],[-1,1],[-1,-1]]
 KNIGHT_DIRS = [[1,2],[-1,2],[1,-2],[-1,-2],[2,1],[-2,1],[2,-1],[-2,-1]]
 QUEEN_DIRS = ROOK_DIRS + BISHOP_DIRS
-INITIAL_BOARD = [
-    ROOK_NOTMOVED, KNIGHT, BISHOP, QUEEN,
-    KING_NOTMOVED, BISHOP, KNIGHT, ROOK_NOTMOVED,
-    PAWN, PAWN, PAWN, PAWN, PAWN, PAWN, PAWN, PAWN,
-] + [0] * 32 + [
-    -PAWN, -PAWN, -PAWN, -PAWN, -PAWN, -PAWN, -PAWN, -PAWN,
-    -ROOK_NOTMOVED, -KNIGHT, -BISHOP, -QUEEN,
-    -KING_NOTMOVED, -BISHOP, -KNIGHT, -ROOK_NOTMOVED,
-]
+BACK_ROW = [ ROOK_NOTMOVED, KNIGHT, BISHOP, QUEEN,
+    KING_NOTMOVED, BISHOP, KNIGHT, ROOK_NOTMOVED ]
+INIT_BOARD = BACK_ROW + [PAWN]*8 + [0]*32 + [-PAWN]*8 + [-x for x in BACK_ROW]
 
-MOVE_MAP = {}   # to be initialized
+MOVE_MAP   = {} # to be initialized
 MOVE_ARRAY = [] # to be initialized
 
 def possible_moves(board):
@@ -200,13 +194,15 @@ def is_attacked(pos, board):
     capture_dirs = [[1,1],[-1,1]]
     for d in capture_dirs:
         dst = jump(pos, d[0], d[1])
-        if dst is not None and -board[dst] == PAWN:
-            return True
+        if dst is not None and \
+            (-board[dst] == PAWN or -board[dst] == PAWN_ENPASSANT):
+                return True
 
     for d in QUEEN_DIRS:
         dst = jump(pos, d[0], d[1])
-        if dst is not None and (-board[dst] == KING or -board[dst] == KING_NOTMOVED):
-            return True
+        if dst is not None and \
+            (-board[dst] == KING or -board[dst] == KING_NOTMOVED):
+                return True
 
     return False
 
@@ -304,7 +300,7 @@ def has_sufficient_material(board):
     return False
 
 def random_play():
-    board = INITIAL_BOARD
+    board = INIT_BOARD.copy()
     c = 0
     while True:
         if not has_sufficient_material(board):
@@ -318,11 +314,11 @@ def random_play():
                 print("stalemate")
             break
         move = random.choice(moves)
-        print("Move number: " + str(move))
         do_move(move, board)
         if c % 2 == 0: print(c//2+1); print_board(board)
         board = flip_sides(board)
         if c % 2 == 1: print_board(board)
+        print("Move number: " + str(move))
         c += 1
 
 def initialize_move_map():
@@ -350,7 +346,10 @@ def initialize_move_map():
 
 def main():
     initialize_move_map()
-    random_play()
+    for i in range(0, 10000):
+        random.seed(i)
+        print(i)
+        random_play()
 
 if __name__ == "__main__":
     main()
