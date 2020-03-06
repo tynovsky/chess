@@ -152,10 +152,9 @@ def jump(src, horizontal, vertical, debug = False):
     dst = src + increment
 
     on_board = dst >= 0 and dst < BOARD_SIZE
-    correct_horizontal = dst %  ROW_SIZE == (src %  ROW_SIZE) + horizontal
-    correct_vertical   = dst // ROW_SIZE == (src // ROW_SIZE) + vertical
+    expected_vertical = dst % ROW_SIZE == (src % ROW_SIZE) + horizontal
 
-    if on_board and correct_vertical and correct_vertical:
+    if on_board and expected_vertical:
         return dst
     else:
         return
