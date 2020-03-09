@@ -14,10 +14,11 @@ ROOK_NOTMOVED = 6
 QUEEN = 7
 KING = 8
 KING_NOTMOVED = 9
-ROOK_DIRS = [[0,1],[0,-1],[1,0],[-1,0]]
-BISHOP_DIRS = [[1,1],[1,-1],[-1,1],[-1,-1]]
-KNIGHT_DIRS = [[1,2],[-1,2],[1,-2],[-1,-2],[2,1],[-2,1],[2,-1],[-2,-1]]
+ROOK_DIRS = ((0,1),(0,-1),(1,0),(-1,0))
+BISHOP_DIRS = ((1,1),(1,-1),(-1,1),(-1,-1))
+KNIGHT_DIRS = ((1,2),(-1,2),(1,-2),(-1,-2),(2,1),(-2,1),(2,-1),(-2,-1))
 QUEEN_DIRS = ROOK_DIRS + BISHOP_DIRS
+PAWN_CAPTURE_DIRS = ((1,1),(-1,1))
 BACK_ROW = [ ROOK_NOTMOVED, KNIGHT, BISHOP, QUEEN,
     KING_NOTMOVED, BISHOP, KNIGHT, ROOK_NOTMOVED ]
 INIT_BOARD = BACK_ROW + [PAWN]*8 + [0]*32 + [-PAWN]*8 + [-x for x in BACK_ROW]
@@ -67,16 +68,16 @@ def is_king_attacked(b):
 
 def straight_moves(src, dirs, board):
     dsts = []
-    for d in dirs:
-        dsts.extend(straight_dsts_one_dir(src, d, board))
+    for horizontal, vertical in dirs:
+        dsts.extend(straight_dsts_one_dir(src, horizontal, vertical, board))
 
     return destinations_to_moves(src, dsts, board)
 
-def straight_dsts_one_dir(src, d, board):
+def straight_dsts_one_dir(src, horizontal, vertical, board):
     dsts = []
     dst = src
     while True:
-        dst = jump(dst, d[0], d[1])
+        dst = jump(dst, horizontal, vertical)
         if dst is None or board[dst] > 0: # no dst or occupied by white
             break
         dsts.append(dst)
@@ -86,8 +87,8 @@ def straight_dsts_one_dir(src, d, board):
 
 def knight_moves(src, board):
     dsts = []
-    for d in KNIGHT_DIRS:
-        dst = jump(src, d[0], d[1])
+    for horizontal, vertical in KNIGHT_DIRS:
+        dst = jump(src, horizontal, vertical)
         if dst is None or board[dst] > 0: # no dst or occupied by white
             continue
         dsts.append(dst)
@@ -104,9 +105,8 @@ def pawn_moves(src, board):
         if dst is not None and board[dst] == 0:
             dsts.append(dst)
 
-    capture_dirs = [[1,1],[-1,1]]
-    for d in capture_dirs:
-        dst = jump(src, d[0], d[1])
+    for horizontal, vertical in PAWN_CAPTURE_DIRS:
+        dst = jump(src, horizontal, vertical)
         if dst is None or board[dst] > 0: # no dst or occupied by white
             continue
         if board[dst] < 0: # black piece to capture
@@ -119,8 +119,8 @@ def pawn_moves(src, board):
 
 def king_moves(src, board):
     dsts = []
-    for d in QUEEN_DIRS:
-        dst = jump(src, d[0], d[1])
+    for horizontal, vertical in QUEEN_DIRS:
+        dst = jump(src, horizontal, vertical)
         if dst is None or board[dst] > 0: # no dst or occupied by white
             continue
         dsts.append(dst)
@@ -190,15 +190,14 @@ def is_attacked(pos, board):
         if piece == KNIGHT:
             return True
 
-    capture_dirs = [[1,1],[-1,1]]
-    for d in capture_dirs:
-        dst = jump(pos, d[0], d[1])
+    for horizontal, vertical in PAWN_CAPTURE_DIRS:
+        dst = jump(pos, horizontal, vertical)
         if dst is not None and \
             (-board[dst] == PAWN or -board[dst] == PAWN_ENPASSANT):
                 return True
 
-    for d in QUEEN_DIRS:
-        dst = jump(pos, d[0], d[1])
+    for horizontal, vertical in QUEEN_DIRS:
+        dst = jump(pos, horizontal, vertical)
         if dst is not None and \
             (-board[dst] == KING or -board[dst] == KING_NOTMOVED):
                 return True
@@ -314,10 +313,9 @@ def random_play():
             break
         move = random.choice(moves)
         do_move(move, board)
-        if c % 2 == 0: print(c//2+1); print_board(board)
+        # if c % 2 == 0: print(c//2+1); print_board(board)
         board = flip_sides(board)
-        if c % 2 == 1: print_board(board)
-        print("Move number: " + str(move))
+        # if c % 2 == 1: print_board(board)
         c += 1
 
 def initialize_move_map():
@@ -345,7 +343,7 @@ def initialize_move_map():
 
 def main():
     initialize_move_map()
-    for i in range(0, 10000):
+    for i in range(0, 100):
         random.seed(i)
         print(i)
         random_play()
