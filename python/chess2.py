@@ -26,6 +26,60 @@ INIT_BOARD = BACK_ROW + [PAWN]*8 + [0]*32 + [-PAWN]*8 + [-x for x in BACK_ROW]
 MOVE_MAP   = {} # to be initialized
 MOVE_ARRAY = [] # to be initialized
 
+_bkp = [[0] * BOARD_SIZE for _ in range(4)]
+
+def find_king(board):
+    for i in range(BOARD_SIZE):
+        if board[i] == KING or board[i] == KING_NOTMOVED:
+            return i
+
+def flip_sides_inplace(board):
+    for i in range(BOARD_SIZE // 2):
+        j = BOARD_SIZE - 1 - i
+        board[i], board[j] = -board[j], -board[i]
+
+def new_game():
+    board = INIT_BOARD.copy()
+    return {
+        'board': board,
+        'positions': {tuple(board): 1},
+        'halfmove_clock': 0,
+    }
+
+def is_over(game):
+    board = game['board']
+    if not has_sufficient_material(board):
+        return "insufficient material"
+    key = tuple(board)
+    if game['positions'].get(key, 0) >= 3:
+        return "threefold repetition"
+    if game['halfmove_clock'] >= 100:
+        return "50-move rule"
+    moves = possible_moves(board)
+    if len(moves) == 0:
+        if is_king_attacked(board):
+            return "checkmate"
+        return "stalemate"
+    return None
+
+def game_do_move(game, move):
+    board = game['board']
+    src, dst, _ = MOVE_ARRAY[move]
+    is_pawn = board[src] in (PAWN, PAWN_ENPASSANT)
+    is_capture = board[dst] != 0
+
+    do_move(move, board)
+    board = flip_sides(board)
+    game['board'] = board
+
+    key = tuple(board)
+    game['positions'][key] = game['positions'].get(key, 0) + 1
+
+    if is_pawn or is_capture:
+        game['halfmove_clock'] = 0
+    else:
+        game['halfmove_clock'] += 1
+
 def possible_moves(board):
     moves = []
     for src in range(BOARD_SIZE):
@@ -49,11 +103,13 @@ def possible_moves(board):
             moves.extend(king_moves(src, board))
             continue
 
+    king_pos = find_king(board)
     legal_moves = []
     for m in moves:
+        kp = m[1] if board[m[0]] in (KING, KING_NOTMOVED) else king_pos
         b = board.copy()
         do_move(MOVE_MAP[m], b)
-        if not is_king_attacked(b):
+        if not is_attacked(kp, b):
             legal_moves.append(MOVE_MAP[m])
 
     return legal_moves
@@ -100,10 +156,10 @@ def pawn_moves(src, board):
     dst = jump(src, 0, 1)
     if dst and board[dst] == 0:
         dsts.append(dst)
-    if src // 8 == 1:
-        dst = jump(src, 0, 2)
-        if dst is not None and board[dst] == 0:
-            dsts.append(dst)
+        if src // 8 == 1:
+            dst2 = jump(src, 0, 2)
+            if dst2 is not None and board[dst2] == 0:
+                dsts.append(dst2)
 
     for horizontal, vertical in PAWN_CAPTURE_DIRS:
         dst = jump(src, horizontal, vertical)
@@ -297,26 +353,94 @@ def has_sufficient_material(board):
 
     return False
 
-def random_play():
-    board = INIT_BOARD.copy()
-    c = 0
+PIECE_VALUE = {
+    PAWN: 100, PAWN_ENPASSANT: 100,
+    KNIGHT: 300, BISHOP: 300,
+    ROOK: 500, ROOK_NOTMOVED: 500,
+    QUEEN: 900,
+    KING: 0, KING_NOTMOVED: 0,
+}
+
+def evaluate(board):
+    score = 0
+    for p in board:
+        if p > 0: score += PIECE_VALUE[p]
+        elif p < 0: score -= PIECE_VALUE[-p]
+    return score
+
+def search(board, depth, score, alpha, beta):
+    if depth == 0:
+        return score, None
+    moves = possible_moves(board)
+    if not moves:
+        if is_attacked(find_king(board), board):
+            return -99999, None
+        return 0, None
+    best_move = moves[0]
+    for move in moves:
+        src, dst, promote = MOVE_ARRAY[move]
+        delta = 0
+        captured = board[dst]
+        if captured < 0:
+            delta += PIECE_VALUE[-captured]
+        if board[src] in (PAWN, PAWN_ENPASSANT) and src % 8 != dst % 8 and captured == 0:
+            delta += PIECE_VALUE[PAWN]
+        if promote is not None:
+            delta += PIECE_VALUE[promote] - PIECE_VALUE[PAWN]
+        b = board.copy()
+        do_move(move, b)
+        s = -search(flip_sides(b), depth - 1, -(score + delta), -beta, -alpha)[0]
+        if s > alpha:
+            alpha = s
+            best_move = move
+        if alpha >= beta:
+            break
+    return alpha, best_move
+
+def pick_move(board, depth, score):
+    moves = possible_moves(board)
+    alpha = -99999
+    scored = []
+    for move in moves:
+        src, dst, promote = MOVE_ARRAY[move]
+        delta = 0
+        captured = board[dst]
+        if captured < 0:
+            delta += PIECE_VALUE[-captured]
+        if board[src] in (PAWN, PAWN_ENPASSANT) and src % 8 != dst % 8 and captured == 0:
+            delta += PIECE_VALUE[PAWN]
+        if promote is not None:
+            delta += PIECE_VALUE[promote] - PIECE_VALUE[PAWN]
+        b = board.copy()
+        do_move(move, b)
+        s = -search(flip_sides(b), depth - 1, -(score + delta), -99999, -alpha)[0]
+        scored.append((s, move))
+        if s > alpha:
+            alpha = s
+    scored.sort(key=lambda x: x[0], reverse=True)
+    return random.choice(scored[:3])[1]
+
+def play():
+    game = new_game()
     while True:
-        if not has_sufficient_material(board):
-            print("insufficient material")
+        result = is_over(game)
+        if result:
+            print(result)
             break
-        moves = possible_moves(board)
-        if len(moves) == 0:
-            if is_king_attacked(board):
-                print("checkmate")
-            else:
-                print("stalemate")
+        score = evaluate(game['board'])
+        move = pick_move(game['board'], 3, score)
+        game_do_move(game, move)
+
+def random_play():
+    game = new_game()
+    while True:
+        result = is_over(game)
+        if result:
+            print(result)
             break
+        moves = possible_moves(game['board'])
         move = random.choice(moves)
-        do_move(move, board)
-        # if c % 2 == 0: print(c//2+1); print_board(board)
-        board = flip_sides(board)
-        # if c % 2 == 1: print_board(board)
-        c += 1
+        game_do_move(game, move)
 
 def initialize_move_map():
     board = [0] * BOARD_SIZE
@@ -343,10 +467,7 @@ def initialize_move_map():
 
 def main():
     initialize_move_map()
-    for i in range(0, 100):
-        random.seed(i)
-        print(i)
-        random_play()
+    play()
 
 if __name__ == "__main__":
     main()
